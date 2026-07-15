@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Tester</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .result {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+            white-space: pre-wrap;
+            font-family: monospace;
+        }
+        .success {
+            color: green;
+        }
+        .error {
+            color: red;
+        }
+        input {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Backend API Tester</h1>
+    <p>Server: <a href="http://localhost:3000/api" target="_blank">http://localhost:3000/api</a></p>
+
+    <!-- Login -->
+    <div class="test-section">
+        <h2>Step 0: Login</h2>
+        <input type="text" id="username" value="admin" placeholder="Username">
+        <input type="password" id="password" value="admin123" placeholder="Password">
+        <button onclick="login()">Login</button>
+        <div id="loginResult" class="result"></div>
+        <p>Token: <input type="text" id="token" placeholder="Will be filled after login" readonly></p>
+    </div>
+
+    <!-- Get Document Types -->
+    <div class="test-section">
+        <h2>Test 1.1: Get Document Types</h2>
+        <button onclick="getDocumentTypes()">Test Document Types</button>
+        <div id="docTypesResult" class="result"></div>
+    </div>
+
+    <!-- Get Residents -->
+    <div class="test-section">
+        <h2>Test 1.2: Get Residents</h2>
+        <button onclick="getResidents()">Test Get Residents</button>
+        <div id="residentsResult" class="result"></div>
+    </div>
+
+    <!-- Get Pending Requests -->
+    <div class="test-section">
+        <h2>Test 1.3: Get Pending Requests</h2>
+        <button onclick="getPendingRequests()">Test Pending Requests</button>
+        <div id="requestsResult" class="result"></div>
+    </div>
+
+    <!-- Approve and Generate Certificate -->
+    <div class="test-section">
+        <h2>Test 2: Approve and Generate Certificate</h2>
+        <input type="text" id="requestId" placeholder="Enter Request ID from Test 1.3">
+        <button onclick="approveAndGenerate()">Approve & Generate Certificate</button>
+        <div id="approveResult" class="result"></div>
+    </div>
+
+    <!-- Mark as Printed -->
+    <div class="test-section">
+        <h2>Test 3: Mark as Printed</h2>
+        <input type="text" id="requestIdPrinted" placeholder="Enter Request ID">
+        <button onclick="markPrinted()">Mark as Printed</button>
+        <div id="printedResult" class="result"></div>
+    </div>
+
+    <!-- Secretary Signed -->
+    <div class="test-section">
+        <h2>Test 4: Secretary Signed</h2>
+        <input type="text" id="requestIdSecretary" placeholder="Enter Request ID">
+        <button onclick="markSecretarySigned()">Secretary Signed</button>
+        <div id="secretaryResult" class="result"></div>
+    </div>
+
+    <!-- Captain Signed -->
+    <div class="test-section">
+        <h2>Test 5: Captain Signed</h2>
+        <input type="text" id="requestIdCaptain" placeholder="Enter Request ID">
+        <button onclick="markCaptainSigned()">Captain Signed</button>
+        <div id="captainResult" class="result"></div>
+    </div>
+
+    <!-- Apply Seal -->
+    <div class="test-section">
+        <h2>Test 6: Apply Official Seal</h2>
+        <input type="text" id="requestIdSeal" placeholder="Enter Request ID">
+        <button onclick="markSealApplied()">Apply Seal</button>
+        <div id="sealResult" class="result"></div>
+    </div>
+
+    <!-- Mark Ready -->
+    <div class="test-section">
+        <h2>Test 7: Mark Ready for Pickup</h2>
+        <input type="text" id="requestIdReady" placeholder="Enter Request ID">
+        <button onclick="markReady()">Mark Ready</button>
+        <div id="readyResult" class="result"></div>
+    </div>
+
+    <!-- Release -->
+    <div class="test-section">
+        <h2>Test 8: Release Certificate</h2>
+        <input type="text" id="requestIdRelease" placeholder="Enter Request ID">
+        <button onclick="release()">Release</button>
+        <div id="releaseResult" class="result"></div>
+    </div>
+
+    <!-- Verify Certificate -->
+    <div class="test-section">
+        <h2>Test 9: Verify Certificate (Public - No Auth)</h2>
+        <input type="text" id="certNumber" placeholder="Enter Certificate Number (BC-2026-XXXXXX)">
+        <button onclick="verifyCertificate()">Verify Certificate</button>
+        <div id="verifyResult" class="result"></div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:3000/api';
+        let token = '';
+
+        async function login() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const resultDiv = document.getElementById('loginResult');
+            const tokenInput = document.getElementById('token');
+
+            try {
+                const response = await fetch(`${API_URL}/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    token = data.accessToken || data.access_token;
+                    tokenInput.value = token;
+                    resultDiv.innerHTML = `<span class="success">✅ Login successful!</span>\n${JSON.stringify(data, null, 2)}`;
+                } else {
+                    resultDiv.innerHTML = `<span class="error">❌ Login failed!</span>\n${JSON.stringify(data, null, 2)}`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<span class="error">❌ Error: ${error.message}</span>`;
+            }
+        }
+
+        async function getDocumentTypes() {
+            const resultDiv = document.getElementById('docTypesResult');
+            
+            if (!token) {
+                resultDiv.innerHTML = '<span class="error">❌ Please login first!</span>';
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/documents`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    const count = data.data?.length || 0;
+                    resultDiv.innerHTML = `<span class="success">✅ Success! Found ${count} document types</span>\n${JSON.stringify(data, null, 2)}`;
+                } else {
+                    resultDiv.innerHTML = `<span class="error">❌ Failed!</span>\n${JSON.stringify(data, null, 2)}`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<span class="error">❌ Error: ${error.message}</span>`;
+            }
+        }
+
+        async function getResidents() {
+            const resultDiv = document.getElementById('residentsResult');
+            
+            if (!token) {
+                resultDiv.innerHTML = '<span class="error">❌ Please login first!</span>';
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/residents?limit=5`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    const count = data.data?.length || 0;
+                    resultDiv.innerHTML = `<span class="success">✅ Success! Found ${count} residents</span>\n${JSON.stringify(data, null, 2)}`;
+                } else {
+                    resultDiv.innerHTML = `<span class="error">❌ Failed!</span>\n${JSON.stringify(data, null, 2)}`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<span class="error">❌ Error: ${error.message}</span>`;
+            }
+        }
+
+        async function getPendingRequests() {
+            const resultDiv = document.getElementById('requestsResult');
+            
+            if (!token) {
+                resultDiv.innerHTML = '<span class="error">❌ Please login first!</span>';
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/requests?status=pending&limit=5`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    const count = data.data?.length || 0;
+                    resultDiv.innerHTML = `<span class="success">✅ Success! Found ${count} pending requests</span>\n${JSON.stringify(data, null, 2)}`;
+                } else {
+                    resultDiv.innerHTML = `<span class="error">❌ Failed!</span>\n${JSON.stringify(data, null, 2)}`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<span class="error">❌ Error: ${error.message}</span>`;
+            }
+        }
+
+        async function approveAndGenerate() {
+            const requestId = document.getElementById('requestId').value;
+            const resultDiv = document.getElementById('approveResult');
+            
+            if (!token) {
+                resultDiv.innerHTML = '<span class="error">❌ Please login first!</span>';
+                return;
+            }
+
+            if (!requestId) {
+                resultDiv.innerHTML = '<span class="error">❌ Please enter a Request ID!</span>';
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/requests/${requestId}/approve-and-generate`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({})
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    resultDiv.innerHTML = `<span class="success">✅ Certificate Generated!</span>
+Certificate Number: ${data.certificateNumber}
+Certificate URL: <a href="http://localhost:3000${data.certificateUrl}" target="_blank">View PDF</a>
+OR Number: ${data.orNumber}
+Status: ${data.status}
+
+Full Response:
+${JSON.stringify(data, null, 2)}`;
+                } else {
+                    resultDiv.innerHTML = `<span class="error">❌ Failed!</span>\n${JSON.stringify(data, null, 2)}`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<span class="error">❌ Error: ${error.message}</span>`;
+            }
+        }
+
+        async function markPrinted() {
+            await updateWorkflowStep('requestIdPrinted', 'mark-printed', 'printedResult', 'Printed');
+        }
+
+        async function markSecretarySigned() {
+            await updateWorkflowStep('requestIdSecretary', 'secretary-signed', 'secretaryResult', 'Secretary Signed');
+        }
+
+        async function markCaptainSigned() {
+            await updateWorkflowStep('requestIdCaptain', 'captain-signed', 'captainResult', 'Captain Signed');
+        }
+
+        async function markSealApplied() {
+            await updateWorkflowStep('requestIdSeal', 'seal-applied', 'sealResult', 'Seal Applied');
+        }
+
+        async function markReady() {
+            await updateWorkflowStep('requestIdReady', 'ready-for-pickup', 'readyResult', 'Ready for Pickup');
+        }
+
+        async function release() {
+            await updateWorkflowStep('requestIdRelease', 'release', 'releaseResult', 'Released');
+        }
+
+        async function updateWorkflowStep(inputId, endpoint, resultId, stepName) {
+            const requestId = document.getElementById(inputId).value;
+            const resultDiv = document.getElementById(resultId);
+            
+            if (!token) {
+                resultDiv.innerHTML = '<span class="error">❌ Please login first!</span>';
+                return;
+            }
+
+            if (!requestId) {
+                resultDiv.innerHTML = '<span class="error">❌ Please enter a Request ID!</span>';
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/requests/${requestId}/${endpoint}`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ remarks: `${stepName} via test` })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    resultDiv.innerHTML = `<span class="success">✅ ${stepName} successful!</span>
+Status: ${data.status}
+
+Full Response:
+${JSON.stringify(data, null, 2)}`;
+                } else {
+                    resultDiv.innerHTML = `<span class="error">❌ Failed!</span>\n${JSON.stringify(data, null, 2)}`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<span class="error">❌ Error: ${error.message}</span>`;
+            }
+        }
+
+        async function verifyCertificate() {
+            const certNumber = document.getElementById('certNumber').value;
+            const resultDiv = document.getElementById('verifyResult');
+
+            if (!certNumber) {
+                resultDiv.innerHTML = '<span class="error">❌ Please enter a Certificate Number!</span>';
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/certificates/verify/${certNumber}`);
+                const data = await response.json();
+
+                if (response.ok) {
+                    resultDiv.innerHTML = `<span class="success">✅ Certificate Verified!</span>
+Certificate Number: ${data.certificateNumber}
+Resident: ${data.residentName}
+Document Type: ${data.documentType}
+Date Issued: ${new Date(data.dateIssued).toLocaleDateString()}
+Status: ${data.status}
+Issuing Barangay: ${data.issuingBarangay}
+
+Full Response:
+${JSON.stringify(data, null, 2)}`;
+                } else {
+                    resultDiv.innerHTML = `<span class="error">❌ Verification Failed!</span>\n${JSON.stringify(data, null, 2)}`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<span class="error">❌ Error: ${error.message}</span>`;
+            }
+        }
+    </script>
+</body>
+</html>
