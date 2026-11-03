@@ -1,4 +1,4 @@
-# Barangay Service Management System but in fb mess 
+# Barangay Service but in fb mess 
 
 This repository contains the Barangay Service Management System, a web application designed to streamline barangay services for residents and administrators.
 
